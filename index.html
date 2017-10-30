@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>leaflet-tilelayer-glue</title>
+  <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"></script>
+  <script src="leaflet-tilelayer-glue.js"></script>
+</head>
+
+<body>
+  <div id="map" style="position:absolute;top:0;left:0;bottom:0;right:0;"></div>
+  <script>
+    var map = L.map("map", {
+      zoom: 12,
+      maxZoom: 18,
+      center: [35.3538, 138.8279]
+    });
+
+    L.control.layers({
+      "default (copy)": L.tileLayer.glue("https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png?o", {
+        attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>GSI</a>",
+        maxZoom: 16,
+        maxNativeZoom: 14
+      }),
+      "relief (mono)": L.tileLayer.glue("https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png?o", {
+        attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>GSI</a>",
+        maxZoom: 16,
+        maxNativeZoom: 14,
+        fragmentShader: (function() {
+          /*
+precision mediump float;
+uniform sampler2D image;
+uniform vec2 unit;
+uniform float zoom;
+const vec4 rgb2alt = vec4(256 * 256, 256 , 1, 0) * 256.0 * 0.01;
+void main() {
+  vec2 p = vec2(gl_FragCoord.x,1.0 / unit.y - gl_FragCoord.y);
+  float alt = dot(texture2D(image,p * unit),rgb2alt);
+  gl_FragColor = vec4(0,0,0,alt / 4000.0);
+}
+*/
+        }).toString().split("/*")[1].split("*/")[0]
+      }),
+      "relief (color)": L.tileLayer.glue("https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png?o", {
+        attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>GSI</a>",
+        maxZoom: 16,
+        maxNativeZoom: 14,
+        fragmentShader: (function() {
+          /*
+precision mediump float;
+uniform sampler2D image;
+uniform vec2 unit;
+uniform float zoom;
+const vec4 rgb2alt = vec4(256 * 256, 256 , 1, 0) * 256.0 * 0.01;
+
+vec3 hue2rgb(float hue){
+  float r = abs(hue * 6.0 - 3.0) - 1.0;
+  float g = 2.0 - abs(hue * 6.0 - 2.0);
+  float b = 2.0 - abs(hue * 6.0 - 4.0);
+  return clamp(vec3(r, g, b), 0.0, 1.0);
+}
+
+vec3 hsl2rgb(vec3 hsl){
+  vec3 rgb = hue2rgb(hsl.x);
+  float c = (1.0 - abs(2.0 * hsl.z - 1.0)) * hsl.y;
+  return (rgb - 0.5) * c + hsl.z;
+}
+
+void main() {
+  vec2 p = vec2(gl_FragCoord.x,1.0 / unit.y - gl_FragCoord.y);
+  float alt = dot(texture2D(image,p * unit),rgb2alt);
+  float hue = (1.0 - alt / 4000.0) * 0.5;
+  gl_FragColor = (alt < 0.0 || alt > 4000.0) ? vec4(0,0,0,0) : vec4(hsl2rgb(vec3(hue,0.5,0.5)),1.0);
+}
+*/
+        }).toString().split("/*")[1].split("*/")[0]
+      }).addTo(map)
+    }, {
+      "hillshade overlay": L.tileLayer.glue("https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png?o", {
+        attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>GSI</a>",
+        maxZoom: 16,
+        maxNativeZoom: 14,
+        fragmentShader: (function() {
+          /*
+precision mediump float;
+uniform sampler2D image;
+uniform vec2 unit;
+uniform float zoom;
+const vec4 rgb2alt = vec4(256 * 256, 256 , 1, 0) * 256.0 * 0.01;
+void main() {
+  vec2 p = vec2(gl_FragCoord.x,1.0 / unit.y - gl_FragCoord.y);
+  float h1 = dot(texture2D(image,(p + vec2(0,0)) * unit),rgb2alt);
+  float h2 = dot(texture2D(image,(p + vec2(1,0)) * unit),rgb2alt);
+  float h3 = dot(texture2D(image,(p + vec2(0,1)) * unit),rgb2alt);
+  gl_FragColor = vec4(0,0,0,clamp((h1 * 2.0 - h2 - h3 ) / exp2(17.0 - zoom),0.0,0.75));
+}
+*/
+        }).toString().split("/*")[1].split("*/")[0]
+      }).addTo(map),
+      "contour": L.tileLayer.glue("https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png?o", {
+        attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>GSI</a>",
+        maxZoom: 16,
+        maxNativeZoom: 14,
+        fragmentShader: (function() {
+          /*
+precision mediump float;
+uniform sampler2D image;
+uniform vec2 unit;
+uniform float zoom;
+const vec4 rgb2alt = vec4(256 * 256, 256 , 1, 0) * 256.0 * 0.01;
+void main() {
+  vec2 p = vec2(gl_FragCoord.x,1.0 / unit.y - gl_FragCoord.y);
+  float interval = clamp(100.0 * exp2(11.0 - zoom),1.0,200.0);
+  float h1 = floor(dot(texture2D(image,(p + vec2(0,0)) * unit),rgb2alt) / interval);
+  float h2 = floor(dot(texture2D(image,(p + vec2(1,0)) * unit),rgb2alt) / interval);
+  float h3 = floor(dot(texture2D(image,(p + vec2(0,1)) * unit),rgb2alt) / interval);
+  float h4 = floor(dot(texture2D(image,(p + vec2(1,1)) * unit),rgb2alt) / interval);
+  gl_FragColor = (h1!=h2 || h1!=h3 || h1!=h4) ? vec4(0,0,0,0.25) : vec4(0,0,0,0);
+}
+*/
+        }).toString().split("/*")[1].split("*/")[0]
+      }).addTo(map)
+
+    }).addTo(map);
+  </script>
+</body>
+
+</html>
