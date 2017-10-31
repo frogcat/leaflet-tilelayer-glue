@@ -57,30 +57,21 @@ void main() {
         return;
       }
 
-      this._timer = NaN;
-
       this._map.on("moveend", function() {
-        this._paint();
+        this.repaint(false);
       }, this);
 
       this.on("tileload", function(event) {
         event.tile.style.display = "none";
       });
       this.on("tileload load loading", function(event) {
-        this._paint();
+        this.repaint(false);
       }, this);
     },
 
-    _paint: function() {
-
-      if (!isNaN(this._timer)) clearTimeout(this._timer);
-      var that = this;
-      this._timer = setTimeout(function() {
-        that._doPaint();
-        that._timer = NaN;
-      }, 10);
+    repaint: function(immediate) {
+      L.Util.requestAnimFrame(this._doPaint, this, immediate);
     },
-
     _doPaint: function() {
 
       if (!this._map) return;
